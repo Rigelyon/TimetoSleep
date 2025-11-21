@@ -1,0 +1,4 @@
+flet
+psutil
+Pillow
+pywin32
