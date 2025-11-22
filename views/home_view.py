@@ -72,24 +72,36 @@ class HomeView(ft.Column):
         # Timer Inputs (Countdown)
         self.hours_input = ft.TextField(
             label="Hours",
-            value="0",
+            value="",
             width=80,
             text_align=ft.TextAlign.CENTER,
             keyboard_type=ft.KeyboardType.NUMBER,
+            input_filter=ft.InputFilter(
+                allow=True, regex_string=r"^[0-9]*$", replacement_string=""
+            ),
+            max_length=5,
         )
         self.minutes_input = ft.TextField(
             label="Mins",
-            value="0",
+            value="",
             width=80,
             text_align=ft.TextAlign.CENTER,
             keyboard_type=ft.KeyboardType.NUMBER,
+            input_filter=ft.InputFilter(
+                allow=True, regex_string=r"^[0-9]*$", replacement_string=""
+            ),
+            max_length=5,
         )
         self.seconds_input = ft.TextField(
             label="Secs",
-            value="0",
+            value="",
             width=80,
             text_align=ft.TextAlign.CENTER,
             keyboard_type=ft.KeyboardType.NUMBER,
+            input_filter=ft.InputFilter(
+                allow=True, regex_string=r"^[0-9]*$", replacement_string=""
+            ),
+            max_length=5,
         )
 
         self.countdown_inputs = ft.Row(
@@ -385,9 +397,9 @@ class HomeView(ft.Column):
 
         if self.timer_type_dropdown.value == "Countdown":
             try:
-                h = int(self.hours_input.value)
-                m = int(self.minutes_input.value)
-                s = int(self.seconds_input.value)
+                h = int(self.hours_input.value) if self.hours_input.value else 0
+                m = int(self.minutes_input.value) if self.minutes_input.value else 0
+                s = int(self.seconds_input.value) if self.seconds_input.value else 0
                 total_seconds = h * 3600 + m * 60 + s
             except ValueError:
                 app_state.page.open(ft.SnackBar(content=ft.Text("Invalid time input!")))
@@ -410,6 +422,13 @@ class HomeView(ft.Column):
         if total_seconds <= 0:
             app_state.page.open(
                 ft.SnackBar(content=ft.Text("Time must be greater than 0!"))
+            )
+            return
+
+        # Check if duration exceeds 999 hours
+        if total_seconds >= 1000 * 3600:
+            app_state.page.open(
+                ft.SnackBar(content=ft.Text("Timer cannot exceed 999 hours!"))
             )
             return
 
