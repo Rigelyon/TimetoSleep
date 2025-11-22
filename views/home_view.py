@@ -178,6 +178,16 @@ class HomeView(ft.Column):
             width=200, height=200, stroke_width=15, value=0, color="blue500"
         )
         self.countdown_text = ft.Text("00:00:00", size=40, weight=ft.FontWeight.BOLD)
+        self.percentage_text = ft.Text(
+            "0%", size=12, weight=ft.FontWeight.BOLD, color="blue200"
+        )
+
+        # Finish time info components
+        self.finish_day_text = ft.Text("", size=16, weight=ft.FontWeight.BOLD)
+        self.finish_date_text = ft.Text("", size=12, color="grey400")
+        self.finish_clock_text = ft.Text(
+            "", size=16, weight=ft.FontWeight.BOLD, color="blue400"
+        )
 
         # Containers
         self.timer_container = ft.Column(
@@ -186,15 +196,28 @@ class HomeView(ft.Column):
                     [
                         self.progress_ring,
                         ft.Container(
-                            content=self.countdown_text,
+                            content=ft.Column(
+                                [
+                                    self.countdown_text,
+                                    self.percentage_text,
+                                ],
+                                alignment=ft.MainAxisAlignment.CENTER,
+                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                                spacing=0,
+                            ),
                             alignment=ft.alignment.center,
                             width=200,
                             height=200,
                         ),
                     ]
                 ),
+                ft.Container(height=10),
                 ft.Text("Target:", color="grey400"),
                 self.selected_process_text,
+                ft.Container(height=10),
+                self.finish_day_text,
+                self.finish_date_text,
+                self.finish_clock_text,
             ],
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
             visible=False,
@@ -441,6 +464,25 @@ class HomeView(ft.Column):
         self.timer_running = True
         self.remaining_seconds = total_seconds
 
+        # Calculate finish time info
+        now = datetime.now()
+        finish_time = now + timedelta(seconds=total_seconds)
+
+        diff_days = (finish_time.date() - now.date()).days
+        if diff_days == 0:
+            relative_day = "Today"
+        elif diff_days == 1:
+            relative_day = "Tomorrow"
+        else:
+            relative_day = f"In {diff_days} days"
+
+        full_date = finish_time.strftime("%A, %d %B %Y")
+        finish_time_str = finish_time.strftime("%H:%M")
+
+        self.finish_day_text.value = relative_day
+        self.finish_date_text.value = full_date
+        self.finish_clock_text.value = finish_time_str
+
         self.timer_thread = threading.Thread(
             target=self.run_timer, args=(total_seconds,), daemon=True
         )
@@ -453,7 +495,15 @@ class HomeView(ft.Column):
             hours, mins = divmod(mins, 60)
 
             self.countdown_text.value = "{:02d}:{:02d}:{:02d}".format(hours, mins, secs)
+
+            # Dynamic font sizing
+            if len(self.countdown_text.value) > 8:
+                self.countdown_text.size = 28
+            else:
+                self.countdown_text.size = 40
+
             self.progress_ring.value = self.remaining_seconds / total_seconds
+            self.percentage_text.value = f"{int(self.progress_ring.value * 100)}%"
 
             app_state.page.update()
             time.sleep(1)
@@ -463,6 +513,7 @@ class HomeView(ft.Column):
             # Timer finished
             self.countdown_text.value = "00:00:00"
             self.progress_ring.value = 0
+            self.percentage_text.value = "0%"
             app_state.page.update()
 
             self.execute_action()
