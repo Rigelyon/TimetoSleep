@@ -2,36 +2,48 @@ import psutil
 import os
 import icon_extractor
 
+
+class IconCache:
+    _cache = {}
+
+    @classmethod
+    def get_icon(cls, exe_path):
+        if exe_path not in cls._cache:
+            cls._cache[exe_path] = icon_extractor.get_icon_base64(exe_path)
+        return cls._cache[exe_path]
+
+
 def get_running_processes(show_all=False):
     """
     Retrieves a list of running processes grouped by name.
     Returns a list of dicts: {'name': str, 'pids': list[int], 'path': str, 'icon': str}
     """
     process_groups = {}
-    for proc in psutil.process_iter(['pid', 'name', 'exe']):
+    for proc in psutil.process_iter(["pid", "name", "exe"]):
         try:
             # If show_all is False, we only show processes with an executable path (usually user apps)
-            if show_all or proc.info['exe']:
-                name = proc.info['name']
+            if show_all or proc.info["exe"]:
+                name = proc.info["name"]
                 if name not in process_groups:
                     # Try to get icon if exe exists
                     icon_b64 = None
-                    exe_path = proc.info['exe'] or ""
+                    exe_path = proc.info["exe"] or ""
                     if exe_path:
-                        icon_b64 = icon_extractor.get_icon_base64(exe_path)
-                    
+                        icon_b64 = IconCache.get_icon(exe_path)
+
                     process_groups[name] = {
-                        'name': name,
-                        'pids': [],
-                        'path': exe_path,
-                        'icon': icon_b64
+                        "name": name,
+                        "pids": [],
+                        "path": exe_path,
+                        "icon": icon_b64,
                     }
-                process_groups[name]['pids'].append(proc.info['pid'])
+                process_groups[name]["pids"].append(proc.info["pid"])
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             pass
-    
+
     # Convert to list and sort
-    return sorted(process_groups.values(), key=lambda x: x['name'].lower())
+    return sorted(process_groups.values(), key=lambda x: x["name"].lower())
+
 
 def kill_processes(pids):
     """
@@ -46,5 +58,5 @@ def kill_processes(pids):
             success_count += 1
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
             print(f"Error killing process {pid}: {e}")
-    
+
     return success_count > 0

@@ -4,6 +4,9 @@ import threading
 import time
 from datetime import datetime, timedelta
 from state import app_state
+from views.components.timer_control import TimerControl
+from views.components.process_selector import ProcessSelector
+from views.components.timer_setup import TimerSetup
 
 
 class HomeView(ft.Column):
@@ -15,11 +18,9 @@ class HomeView(ft.Column):
         self.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
         # State
-        self.selected_processes = []
         self.timer_running = False
         self.remaining_seconds = 0
         self.timer_thread = None
-        self.all_processes = []
 
         # UI Components
         self.header = ft.Text(
@@ -27,159 +28,15 @@ class HomeView(ft.Column):
         )
         self.sub_header = ft.Text("Auto-terminate apps", size=14, color="grey400")
 
-        self.search_field = ft.TextField(
-            hint_text="Search process...",
-            prefix_icon="search",
-            border_radius=10,
-            on_change=lambda e: self.filter_processes(e.control.value),
-            expand=True,
+        # Modularized Components
+        self.timer_control = TimerControl()
+        self.process_selector = ProcessSelector(
+            on_selection_change=self.on_process_selection_change
         )
-
-        self.refresh_button = ft.IconButton(
-            icon="refresh",
-            tooltip="Refresh Process List",
-            on_click=lambda e: self.refresh_processes(),
-        )
-
-        self.process_list_view = ft.ListView(expand=True, spacing=10, padding=10)
+        self.timer_setup = TimerSetup()
 
         self.selected_process_text = ft.Text(
             "No process selected", italic=True, color="grey500"
-        )
-
-        # Timer Type Selector
-        self.timer_type_dropdown = ft.Dropdown(
-            label="Timer Type",
-            options=[
-                ft.dropdown.Option("Countdown"),
-                ft.dropdown.Option("Specific Time"),
-            ],
-            value="Countdown",
-            on_change=self.on_timer_type_change,
-            expand=True,
-        )
-
-        # Action Selector
-        self.action_dropdown = ft.Dropdown(
-            label="Action",
-            options=[
-                ft.dropdown.Option("Terminate Process"),
-            ],
-            value="Terminate Process",
-            expand=True,
-        )
-
-        # Timer Inputs (Countdown)
-        self.hours_input = ft.TextField(
-            label="Hours",
-            value="",
-            width=80,
-            text_align=ft.TextAlign.CENTER,
-            keyboard_type=ft.KeyboardType.NUMBER,
-            input_filter=ft.InputFilter(
-                allow=True, regex_string=r"^[0-9]*$", replacement_string=""
-            ),
-            max_length=5,
-        )
-        self.minutes_input = ft.TextField(
-            label="Mins",
-            value="",
-            width=80,
-            text_align=ft.TextAlign.CENTER,
-            keyboard_type=ft.KeyboardType.NUMBER,
-            input_filter=ft.InputFilter(
-                allow=True, regex_string=r"^[0-9]*$", replacement_string=""
-            ),
-            max_length=5,
-        )
-        self.seconds_input = ft.TextField(
-            label="Secs",
-            value="",
-            width=80,
-            text_align=ft.TextAlign.CENTER,
-            keyboard_type=ft.KeyboardType.NUMBER,
-            input_filter=ft.InputFilter(
-                allow=True, regex_string=r"^[0-9]*$", replacement_string=""
-            ),
-            max_length=5,
-        )
-
-        self.countdown_inputs = ft.Row(
-            [self.hours_input, self.minutes_input, self.seconds_input],
-            alignment=ft.MainAxisAlignment.CENTER,
-        )
-
-        # Specific Time Inputs
-        self.selected_time = None
-        self.time_picker = ft.TimePicker(
-            confirm_text="Confirm",
-            error_invalid_text="Time invalid",
-            help_text="Pick your time",
-            on_change=self.on_time_picked,
-        )
-
-        self.time_input_field = ft.TextField(
-            value="Tap to select time",
-            read_only=True,
-            width=200,
-            text_align=ft.TextAlign.CENTER,
-            prefix_icon="access_time",
-            on_click=lambda _: app_state.page.open(self.time_picker),
-        )
-
-        self.day_status_text = ft.Text(
-            "Today", size=16, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER
-        )
-        self.date_display_text = ft.Text(
-            value=datetime.now().strftime("%A, %d %B %Y"),
-            size=12,
-            color="grey400",
-            text_align=ft.TextAlign.CENTER,
-        )
-
-        self.specific_time_inputs = ft.Row(
-            [
-                ft.Column(
-                    [
-                        ft.Text(
-                            "Target Time:",
-                            size=12,
-                            color="grey500",
-                            text_align=ft.TextAlign.CENTER,
-                        ),
-                        self.time_input_field,
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    expand=True,
-                ),
-                ft.Container(width=20),  # Spacer
-                ft.Column(
-                    [
-                        ft.Text(
-                            "Target Date:",
-                            size=12,
-                            color="grey500",
-                            text_align=ft.TextAlign.CENTER,
-                        ),
-                        self.day_status_text,
-                        self.date_display_text,
-                    ],
-                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    expand=True,
-                ),
-            ],
-            alignment=ft.MainAxisAlignment.CENTER,
-            vertical_alignment=ft.CrossAxisAlignment.CENTER,
-            visible=False,
-        )
-
-        # Progress Ring
-        self.progress_ring = ft.ProgressRing(
-            width=200, height=200, stroke_width=15, value=0, color="blue500"
-        )
-        self.countdown_text = ft.Text("00:00:00", size=40, weight=ft.FontWeight.BOLD)
-        self.percentage_text = ft.Text(
-            "0%", size=12, weight=ft.FontWeight.BOLD, color="blue200"
         )
 
         # Finish time info components
@@ -192,25 +49,7 @@ class HomeView(ft.Column):
         # Containers
         self.timer_container = ft.Column(
             [
-                ft.Stack(
-                    [
-                        self.progress_ring,
-                        ft.Container(
-                            content=ft.Column(
-                                [
-                                    self.countdown_text,
-                                    self.percentage_text,
-                                ],
-                                alignment=ft.MainAxisAlignment.CENTER,
-                                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                                spacing=0,
-                            ),
-                            alignment=ft.alignment.center,
-                            width=200,
-                            height=200,
-                        ),
-                    ]
-                ),
+                self.timer_control,
                 ft.Container(height=10),
                 ft.Text("Target:", color="grey400"),
                 self.selected_process_text,
@@ -225,32 +64,38 @@ class HomeView(ft.Column):
 
         self.setup_container = ft.Column(
             [
-                ft.Text("Configuration:", weight=ft.FontWeight.BOLD),
-                ft.Row(
-                    [
-                        self.timer_type_dropdown,
-                        ft.Container(width=20),
-                        self.action_dropdown,
-                    ],
-                    alignment=ft.MainAxisAlignment.CENTER,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
-                ),
+                self.timer_setup,
                 ft.Divider(),
-                ft.Text("Select a process to terminate:", weight=ft.FontWeight.BOLD),
-                ft.Row([self.search_field, self.refresh_button]),
-                ft.Container(
-                    content=self.process_list_view,
-                    height=250,
-                    border=ft.border.all(1, "grey800"),
-                    border_radius=10,
-                    padding=5,
-                ),
-                ft.Divider(),
-                ft.Text("Timer Settings:", weight=ft.FontWeight.BOLD),
-                self.countdown_inputs,
-                self.specific_time_inputs,
+                self.process_selector,
             ]
         )
+
+        # Insert process selector into timer setup layout logically if needed,
+        # but here we just stack them in setup_container.
+        # Actually, the original design had configuration -> process selector -> timer settings.
+        # Let's adjust the setup_container to match that flow using the components.
+
+        # We need to split TimerSetup to allow inserting ProcessSelector in between?
+        # Or we can just rearrange. The TimerSetup currently has "Configuration" and "Timer Settings".
+        # Let's keep it simple: Configuration (Timer Type/Action) -> Process Selector -> Timer Settings (Inputs)
+
+        # To achieve the exact original layout, we might need to adjust TimerSetup or how we compose it.
+        # For now, let's put ProcessSelector in the middle of TimerSetup's controls list?
+        # No, that's messy. Let's just append ProcessSelector after TimerSetup for now,
+        # OR we can reconstruct the list.
+
+        # Let's reconstruct the setup container using parts of TimerSetup if possible,
+        # but TimerSetup is a Column.
+        # Let's just put ProcessSelector between the config and timer settings in TimerSetup?
+        # That would require modifying TimerSetup to accept a child or exposing its list.
+        # Let's modify TimerSetup to allow inserting the process selector.
+
+        # Actually, let's just add it to the TimerSetup controls list dynamically here since we are in Python.
+        self.timer_setup.controls.insert(2, ft.Divider())
+        self.timer_setup.controls.insert(3, self.process_selector)
+        self.timer_setup.controls.insert(4, ft.Divider())
+
+        self.setup_container = self.timer_setup  # Use TimerSetup as the main container
 
         # Buttons
         self.start_button = ft.ElevatedButton(
@@ -303,93 +148,17 @@ class HomeView(ft.Column):
             )
         ]
 
-        # Register callback
-        app_state.refresh_processes_callback = self.refresh_processes
-        self.refresh_processes()
+    def did_mount(self):
+        # Initial refresh
+        self.process_selector.refresh_processes()
 
-    def on_timer_type_change(self, e):
-        is_countdown = self.timer_type_dropdown.value == "Countdown"
-        self.countdown_inputs.visible = is_countdown
-        self.specific_time_inputs.visible = not is_countdown
-        app_state.page.update()
-
-    def on_time_picked(self, e):
-        self.selected_time = self.time_picker.value
-        if self.selected_time:
-            self.time_input_field.value = self.selected_time.strftime("%H:%M")
-
-            # Update date display
-            now = datetime.now()
-            target_dt = datetime.combine(now.date(), self.selected_time)
-            is_tomorrow = False
-            if target_dt <= now:
-                target_dt += timedelta(days=1)
-                is_tomorrow = True
-
-            self.day_status_text.value = "Tomorrow" if is_tomorrow else "Today"
-            self.date_display_text.value = target_dt.strftime("%A, %d %B %Y")
-
-        app_state.page.update()
-
-    def refresh_processes(self):
-        self.all_processes = process_manager.get_running_processes(
-            show_all=app_state.show_system_processes
-        )
-        self.filter_processes(
-            self.search_field.value if self.search_field.value else ""
-        )
-
-    def filter_processes(self, query):
-        self.process_list_view.controls.clear()
-        query = query.lower()
-        selected_names = [p["name"] for p in self.selected_processes]
-
-        for proc in self.all_processes:
-            if query in proc["name"].lower():
-                # Determine icon
-                if proc.get("icon"):
-                    leading_control = ft.Image(
-                        src_base64=proc["icon"], width=32, height=32
-                    )
-                else:
-                    leading_control = ft.Icon("apps")
-
-                # Create a list tile for each process
-                tile = ft.ListTile(
-                    leading=leading_control,
-                    title=ft.Text(proc["name"]),
-                    subtitle=ft.Text(f"{len(proc['pids'])} processes"),
-                    on_click=lambda e, p=proc: self.select_process(p),
-                    hover_color="grey900",
-                    data=proc["name"],
-                )
-
-                if proc["name"] in selected_names:
-                    tile.bgcolor = "blue900"
-
-                self.process_list_view.controls.append(tile)
-
-        if app_state.page:
-            app_state.page.update()
-
-    def select_process(self, proc):
-        # Check if already selected (by name)
-        existing = next(
-            (p for p in self.selected_processes if p["name"] == proc["name"]), None
-        )
-
-        if existing:
-            self.selected_processes.remove(existing)
-        else:
-            self.selected_processes.append(proc)
-
-        # Update text
-        if not self.selected_processes:
+    def on_process_selection_change(self, selected_processes):
+        if not selected_processes:
             self.selected_process_text.value = "No process selected"
             self.selected_process_text.italic = True
             self.selected_process_text.color = "grey500"
         else:
-            names = [p["name"] for p in self.selected_processes]
+            names = [p["name"] for p in selected_processes]
             if len(names) > 3:
                 display_text = f"{len(names)} apps selected"
             else:
@@ -397,50 +166,23 @@ class HomeView(ft.Column):
             self.selected_process_text.value = display_text
             self.selected_process_text.italic = False
             self.selected_process_text.color = "white"
-
-        # Update visual selection
-        selected_names = [p["name"] for p in self.selected_processes]
-        for tile in self.process_list_view.controls:
-            if tile.data in selected_names:
-                tile.bgcolor = "blue900"
-            else:
-                tile.bgcolor = None
-
-        if app_state.page:
-            app_state.page.update()
+        self.update()
 
     def start_timer(self, e):
-        if not self.selected_processes:
+        if not self.process_selector.selected_processes:
             app_state.page.open(
                 ft.SnackBar(content=ft.Text("Please select at least one process!"))
             )
             return
 
-        total_seconds = 0
+        total_seconds = self.timer_setup.get_total_seconds()
 
-        if self.timer_type_dropdown.value == "Countdown":
-            try:
-                h = int(self.hours_input.value) if self.hours_input.value else 0
-                m = int(self.minutes_input.value) if self.minutes_input.value else 0
-                s = int(self.seconds_input.value) if self.seconds_input.value else 0
-                total_seconds = h * 3600 + m * 60 + s
-            except ValueError:
-                app_state.page.open(ft.SnackBar(content=ft.Text("Invalid time input!")))
-                return
-        else:  # Specific Time
-            if not self.selected_time:
-                app_state.page.open(ft.SnackBar(content=ft.Text("Please pick a time!")))
-                return
-
-            now = datetime.now()
-            target_time = datetime.combine(now.date(), self.selected_time)
-
-            if target_time <= now:
-                # If time has passed today, assume tomorrow
-                target_time += timedelta(days=1)
-
-            diff = target_time - now
-            total_seconds = int(diff.total_seconds())
+        if total_seconds == -1:
+            app_state.page.open(ft.SnackBar(content=ft.Text("Invalid time input!")))
+            return
+        elif total_seconds == -2:
+            app_state.page.open(ft.SnackBar(content=ft.Text("Please pick a time!")))
+            return
 
         if total_seconds <= 0:
             app_state.page.open(
@@ -487,49 +229,30 @@ class HomeView(ft.Column):
             target=self.run_timer, args=(total_seconds,), daemon=True
         )
         self.timer_thread.start()
-        app_state.page.update()
+        self.update()
 
     def run_timer(self, total_seconds):
         while self.remaining_seconds > 0 and self.timer_running:
-            mins, secs = divmod(self.remaining_seconds, 60)
-            hours, mins = divmod(mins, 60)
-
-            self.countdown_text.value = "{:02d}:{:02d}:{:02d}".format(hours, mins, secs)
-
-            # Dynamic font sizing
-            if len(self.countdown_text.value) > 8:
-                self.countdown_text.size = 28
-            else:
-                self.countdown_text.size = 40
-
-            self.progress_ring.value = self.remaining_seconds / total_seconds
-            self.percentage_text.value = f"{int(self.progress_ring.value * 100)}%"
-
-            app_state.page.update()
+            self.timer_control.update_timer(self.remaining_seconds, total_seconds)
             time.sleep(1)
             self.remaining_seconds -= 1
 
         if self.timer_running:  # If not cancelled
             # Timer finished
-            self.countdown_text.value = "00:00:00"
-            self.progress_ring.value = 0
-            self.percentage_text.value = "0%"
-            app_state.page.update()
-
+            self.timer_control.update_timer(0, total_seconds)
             self.execute_action()
-
             self.reset_ui()
 
     def execute_action(self):
-        action = self.action_dropdown.value
+        action = self.timer_setup.action_dropdown.value
 
         if action == "Terminate Process":
             success_count = 0
-            for proc in self.selected_processes:
+            for proc in self.process_selector.selected_processes:
                 if process_manager.kill_processes(proc["pids"]):
                     success_count += 1
 
-            if success_count == len(self.selected_processes):
+            if success_count == len(self.process_selector.selected_processes):
                 app_state.page.open(
                     ft.SnackBar(
                         content=ft.Text(
@@ -542,7 +265,7 @@ class HomeView(ft.Column):
                 app_state.page.open(
                     ft.SnackBar(
                         content=ft.Text(
-                            f"Terminated {success_count}/{len(self.selected_processes)} apps."
+                            f"Terminated {success_count}/{len(self.process_selector.selected_processes)} apps."
                         ),
                         bgcolor="orange700",
                     )
@@ -565,4 +288,5 @@ class HomeView(ft.Column):
         self.timer_container.visible = False
         self.start_button.visible = True
         self.cancel_button.visible = False
-        app_state.page.update()
+        self.timer_control.reset()
+        self.update()
