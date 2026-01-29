@@ -31,8 +31,11 @@ def main(page: ft.Page):
         while True:
             try:
                 if page.window.minimized and app_state.minimize_to_tray:
-                    page.window.visible = False
-                    page.update()
+                    # Only hide logic if tray is actually running
+                    if tray_service.is_active():
+                        page.window.visible = False
+                        page.update()
+                    # If tray failed, standard minimize happens (window stays in taskbar, just minimized)
             except Exception:
                 pass
             time.sleep(0.3)

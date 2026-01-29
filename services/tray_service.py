@@ -28,6 +28,9 @@ class TrayService:
         self._enable_dpi_awareness()
         self._enable_dark_mode()
 
+    def is_active(self):
+        return self.icon is not None
+
     def _enable_dpi_awareness(self):
         try:
             import ctypes
