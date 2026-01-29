@@ -21,9 +21,9 @@ class HomeView(ft.Column):
 
         # UI Components
         self.header = ft.Text(
-            "Time to Sleep", size=30, weight=ft.FontWeight.BOLD, color="blue400"
+            "Time to Sleep", size=40, weight=ft.FontWeight.BOLD, color="blue400"
         )
-        self.sub_header = ft.Text("Auto-terminate apps", size=14, color="grey400")
+        self.sub_header = ft.Text("It's time for you to sleep", size=16, color="grey400")
 
         # Child Components
         self.timer_control = TimerControl()

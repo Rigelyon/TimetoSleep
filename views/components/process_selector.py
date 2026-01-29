@@ -27,7 +27,7 @@ class ProcessSelector(ft.Column):
         self.process_list_view = ft.ListView(expand=True, spacing=10, padding=10)
 
         self.controls = [
-            ft.Text("Select a process to terminate:", weight=ft.FontWeight.BOLD, size=16),
+            ft.Text("Select a Process to Terminate:", weight=ft.FontWeight.BOLD, size=16),
             ft.Container(height=5),
             ft.Row([self.search_field, self.refresh_button]),
             ft.Container(
@@ -37,6 +37,7 @@ class ProcessSelector(ft.Column):
                 border_radius=10,
                 padding=5,
             ),
+            ft.Container(height=5),
         ]
 
         # Register callback
