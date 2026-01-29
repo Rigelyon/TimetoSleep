@@ -1,12 +1,12 @@
 import flet as ft
 from datetime import datetime, timedelta
-from state import app_state
 
 
 class TimerSetup(ft.Column):
     def __init__(self, on_action_change=None):
         super().__init__()
         self.on_action_change = on_action_change
+        self.horizontal_alignment = ft.CrossAxisAlignment.START
 
         # Timer Type Selector
         self.timer_type_dropdown = ft.Dropdown(
@@ -90,7 +90,7 @@ class TimerSetup(ft.Column):
             width=200,
             text_align=ft.TextAlign.CENTER,
             prefix_icon="access_time",
-            on_click=lambda _: app_state.page.open(self.time_picker),
+            on_click=self.open_time_picker,
         )
 
         self.day_status_text = ft.Text(
@@ -140,7 +140,8 @@ class TimerSetup(ft.Column):
         )
 
         self.controls = [
-            ft.Text("Action Settings:", weight=ft.FontWeight.BOLD),
+            ft.Text("Configuration:", weight=ft.FontWeight.BOLD, size=16),
+            ft.Container(height=5),
             ft.Row(
                 [
                     self.timer_type_dropdown,
@@ -151,10 +152,15 @@ class TimerSetup(ft.Column):
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
             ft.Divider(),
-            ft.Text("Timer Settings:", weight=ft.FontWeight.BOLD),
+            ft.Text("Timer Settings:", weight=ft.FontWeight.BOLD, size=16),
+            ft.Container(height=5),
             self.countdown_inputs,
             self.specific_time_inputs,
         ]
+
+    def open_time_picker(self, e):
+        if self.page:
+            self.page.open(self.time_picker)
 
     def on_timer_type_change(self, e):
         is_countdown = self.timer_type_dropdown.value == "Countdown"
@@ -184,28 +190,42 @@ class TimerSetup(ft.Column):
 
         self.update()
 
-    def get_total_seconds(self):
+    def get_configuration(self):
+        """
+        Returns a dict containing the current configuration.
+        Returns:
+            dict: { 'mode': str, 'action': str, 'total_seconds': int, 'error': str|None }
+        """
+        mode = self.timer_type_dropdown.value
+        action = self.action_dropdown.value
         total_seconds = 0
-        if self.timer_type_dropdown.value == "Countdown":
+        error = None
+
+        if mode == "Countdown":
             try:
                 h = int(self.hours_input.value) if self.hours_input.value else 0
                 m = int(self.minutes_input.value) if self.minutes_input.value else 0
                 s = int(self.seconds_input.value) if self.seconds_input.value else 0
                 total_seconds = h * 3600 + m * 60 + s
+                if total_seconds <= 0:
+                    error = "Time must be greater than 0!"
             except ValueError:
-                return -1  # Invalid input
+                error = "Invalid time input!"
         else:  # Specific Time
             if not self.selected_time:
-                return -2  # No time selected
+                error = "Please pick a time!"
+            else:
+                now = datetime.now()
+                target_time = datetime.combine(now.date(), self.selected_time)
+                if target_time <= now:
+                    target_time += timedelta(days=1)
 
-            now = datetime.now()
-            target_time = datetime.combine(now.date(), self.selected_time)
+                diff = target_time - now
+                total_seconds = int(diff.total_seconds())
 
-            if target_time <= now:
-                # If time has passed today, assume tomorrow
-                target_time += timedelta(days=1)
-
-            diff = target_time - now
-            total_seconds = int(diff.total_seconds())
-
-        return total_seconds
+        return {
+            "mode": mode,
+            "action": action,
+            "total_seconds": total_seconds,
+            "error": error,
+        }
