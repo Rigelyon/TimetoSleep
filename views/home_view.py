@@ -17,7 +17,9 @@ class HomeView(ft.Column):
         self.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
         # Service
-        self.timer_service = TimerService()
+        if not app_state.timer_service:
+            app_state.timer_service = TimerService()
+        self.timer_service = app_state.timer_service
 
         # UI Components
         self.header = ft.Text(
@@ -163,6 +165,29 @@ class HomeView(ft.Column):
         self.current_trigger_type = self.timer_setup.trigger_type_dropdown.value
         self.on_action_change(self.timer_setup.action_dropdown.value)
 
+        # Subscribe to pause changes
+        self.timer_service.add_pause_listener(self.on_pause_change)
+
+    def will_unmount(self):
+        self.timer_service.remove_pause_listener(self.on_pause_change)
+
+    def on_pause_change(self, is_paused):
+        self.timer_control.set_paused(is_paused)
+        if is_paused:
+            self.pause_button.text = "Resume"
+            self.pause_button.icon = "play_arrow"
+            self.pause_button.style.bgcolor = "green600"
+        else:
+            self.pause_button.text = "Pause"
+            self.pause_button.icon = "pause"
+            self.pause_button.style.bgcolor = "orange600"
+
+        # Update status in config for tray
+        if app_state.timer_config:
+            app_state.timer_config["status"] = "Paused" if is_paused else "Running"
+
+        self.update()
+
     def on_process_selection_change(self, selected_processes):
         if not selected_processes:
             self.selected_process_text.value = "No process selected"
@@ -279,7 +304,25 @@ class HomeView(ft.Column):
         self.timer_service.start_timer(
             total_seconds, on_tick=self.on_timer_tick, on_finish=self.on_timer_finish
         )
+
+        # Update AppState config for Tray
+        app_state.timer_config = {
+            "action": action,
+            "target": self._get_target_description(),
+            "status": "Running",
+            "total_seconds": total_seconds,
+        }
         self.update()
+
+    def _get_target_description(self):
+        config = self.timer_setup.get_configuration()
+        action = config["action"]
+        if action == "Terminate Process":
+            count = len(self.process_selector.selected_processes)
+            if count == 1:
+                return self.process_selector.selected_processes[0]["name"]
+            return f"{count} apps"
+        return "System"
 
     def on_timer_tick(self, remaining, total):
         # This callback comes from a thread, so we must not update UI directly if Flet is picky,
@@ -333,21 +376,13 @@ class HomeView(ft.Column):
         self.reset_ui()
 
     def on_pause_click(self, e):
-        is_paused = self.timer_service.toggle_pause()
-        self.timer_control.set_paused(is_paused)
-        if is_paused:
-            self.pause_button.text = "Resume"
-            self.pause_button.icon = "play_arrow"
-            self.pause_button.style.bgcolor = "green600"
-        else:
-            self.pause_button.text = "Pause"
-            self.pause_button.icon = "pause"
-            self.pause_button.style.bgcolor = "orange600"
-        self.update()
+        # Service call will trigger listener update
+        self.timer_service.toggle_pause()
 
     def on_cancel_click(self, e):
         self.timer_service.cancel_timer()
         app_state.page.open(ft.SnackBar(content=ft.Text("Timer cancelled.")))
+        app_state.timer_config = {}  # Clear config
         self.reset_ui()
 
     def reset_ui(self):

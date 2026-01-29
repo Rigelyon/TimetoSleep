@@ -11,16 +11,16 @@ class TimerSetup(ft.Column):
 
         # Trigger Type Selector
         self.trigger_type_dropdown = ft.Dropdown(
-            label="Trigger",
+            label="Trigger Type",
             options=[
                 ft.dropdown.Option("Countdown"),
                 ft.dropdown.Option("Specific Time"),
                 ft.dropdown.Option("Immediate"),
             ],
             value="Countdown",
-            on_change=self.on_trigger_type_change,
             expand=True,
         )
+        self.trigger_type_dropdown.on_change = self.on_trigger_type_change
 
         # Action Selector
         self.action_dropdown = ft.Dropdown(
@@ -33,9 +33,9 @@ class TimerSetup(ft.Column):
                 ft.dropdown.Option("Sleep"),
             ],
             value="Terminate Process",
-            on_change=self.on_action_change_handler,
             expand=True,
         )
+        self.action_dropdown.on_change = self.on_action_change_handler
 
         # Timer Inputs (Countdown)
         self.hours_input = ft.TextField(

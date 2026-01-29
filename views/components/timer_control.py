@@ -35,7 +35,7 @@ class TimerControl(ft.Stack):
                     horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                     spacing=0,
                 ),
-                alignment=ft.alignment.center,
+                # alignment=ft.alignment.center,
                 width=200,
                 height=200,
             ),

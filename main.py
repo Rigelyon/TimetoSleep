@@ -2,6 +2,10 @@ import flet as ft
 from views.home_view import HomeView
 from views.settings_view import SettingsView
 from state import app_state
+from services.timer_service import TimerService
+from services.tray_service import TrayService
+import threading
+import time
 
 
 def main(page: ft.Page):
@@ -14,6 +18,26 @@ def main(page: ft.Page):
     page.window.height = 750
     page.window.resizable = True
     page.update()
+
+    # Initialize Services
+    if not app_state.timer_service:
+        app_state.timer_service = TimerService()
+
+    tray_service = TrayService()
+    tray_service.run_detached()
+
+    # Window Event Handler (Minimize Polling because event is unreliable)
+    def minimize_watcher():
+        while True:
+            try:
+                if page.window.minimized and app_state.minimize_to_tray:
+                    page.window.visible = False
+                    page.update()
+            except Exception:
+                pass
+            time.sleep(0.3)
+
+    threading.Thread(target=minimize_watcher, daemon=True).start()
 
     # Views
     home_view = HomeView()
