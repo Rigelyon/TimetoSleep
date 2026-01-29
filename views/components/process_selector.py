@@ -26,6 +26,15 @@ class ProcessSelector(ft.Column):
 
         self.process_list_view = ft.ListView(expand=True, spacing=10, padding=10)
 
+        self.selected_label = ft.Text(
+            "",
+            size=14,
+            color="blue200",
+            italic=True,
+            visible=False,
+            weight=ft.FontWeight.W_500,
+        )
+
         self.controls = [
             ft.Text(
                 "Select a Process to Terminate:", weight=ft.FontWeight.BOLD, size=16
@@ -39,6 +48,7 @@ class ProcessSelector(ft.Column):
                 border_radius=10,
                 padding=5,
             ),
+            self.selected_label,
             ft.Container(height=5),
         ]
 
@@ -97,6 +107,24 @@ class ProcessSelector(ft.Column):
 
         # Update visual selection
         selected_names = [p["name"] for p in self.selected_processes]
+
+        # Update Label
+        if self.selected_processes:
+            count = len(self.selected_processes)
+            if count > 3:
+                txt = (
+                    f"Selected {count} processes: "
+                    + ", ".join(selected_names[:3])
+                    + "..."
+                )
+            else:
+                txt = "Selected: " + ", ".join(selected_names)
+
+            self.selected_label.value = txt
+            self.selected_label.visible = True
+        else:
+            self.selected_label.visible = False
+
         for tile in self.process_list_view.controls:
             if tile.data in selected_names:
                 tile.bgcolor = "blue900"
