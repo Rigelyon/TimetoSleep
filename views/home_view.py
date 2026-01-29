@@ -119,6 +119,20 @@ class HomeView(ft.Column):
             visible=False,
         )
 
+        self.pause_button = ft.ElevatedButton(
+            "Pause",
+            icon="pause",
+            style=ft.ButtonStyle(
+                color="white",
+                bgcolor="orange600",
+                padding=20,
+                shape=ft.RoundedRectangleBorder(radius=10),
+            ),
+            on_click=self.on_pause_click,
+            width=200,
+            visible=False,
+        )
+
         self.controls_list = [
             self.header,
             self.sub_header,
@@ -127,7 +141,7 @@ class HomeView(ft.Column):
             self.timer_container,
             # ft.Divider(height=20, color="transparent"),
             ft.Row(
-                [self.start_button, self.cancel_button],
+                [self.start_button, self.pause_button, self.cancel_button],
                 alignment=ft.MainAxisAlignment.CENTER,
             ),
         ]
@@ -237,7 +251,13 @@ class HomeView(ft.Column):
         self.setup_container.visible = False
         self.timer_container.visible = True
         self.start_button.visible = False
+        self.pause_button.visible = True
         self.cancel_button.visible = True
+
+        # Reset pause button state
+        self.pause_button.text = "Pause"
+        self.pause_button.icon = "pause"
+        self.pause_button.style.bgcolor = "orange600"
 
         # Calculate finish time info
         now = datetime.now()
@@ -266,6 +286,13 @@ class HomeView(ft.Column):
         # but Flet usually handles updates from other threads via page.update() or control.update() if locking is correct.
         # However, it's safer to ensure we are thread-safe. Flet controls are generally thread-safe for property updates.
         self.timer_control.update_timer(remaining, total)
+
+        # Update finish time based on remaining duration
+        finish_time = datetime.now() + timedelta(seconds=remaining)
+        new_text = finish_time.strftime("%H:%M")
+        if self.finish_clock_text.value != new_text:
+            self.finish_clock_text.value = new_text
+            self.finish_clock_text.update()
 
     def on_timer_finish(self):
         # Execute Action
@@ -305,6 +332,19 @@ class HomeView(ft.Column):
 
         self.reset_ui()
 
+    def on_pause_click(self, e):
+        is_paused = self.timer_service.toggle_pause()
+        self.timer_control.set_paused(is_paused)
+        if is_paused:
+            self.pause_button.text = "Resume"
+            self.pause_button.icon = "play_arrow"
+            self.pause_button.style.bgcolor = "green600"
+        else:
+            self.pause_button.text = "Pause"
+            self.pause_button.icon = "pause"
+            self.pause_button.style.bgcolor = "orange600"
+        self.update()
+
     def on_cancel_click(self, e):
         self.timer_service.cancel_timer()
         app_state.page.open(ft.SnackBar(content=ft.Text("Timer cancelled.")))
@@ -314,6 +354,7 @@ class HomeView(ft.Column):
         self.setup_container.visible = True
         self.timer_container.visible = False
         self.start_button.visible = True
+        self.pause_button.visible = False
         self.cancel_button.visible = False
         self.timer_control.reset()
         self.update()

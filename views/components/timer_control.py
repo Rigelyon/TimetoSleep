@@ -11,12 +11,23 @@ class TimerControl(ft.Stack):
         self.percentage_text = ft.Text(
             "0%", size=12, weight=ft.FontWeight.BOLD, color="blue200"
         )
+        self.paused_text = ft.Container(
+            content=ft.Text(
+                "PAUSED", size=12, weight=ft.FontWeight.BOLD, color="orange400"
+            ),
+            bgcolor="orange100",
+            padding=ft.padding.symmetric(horizontal=8, vertical=2),
+            border_radius=5,
+            visible=False,
+            margin=ft.margin.only(bottom=5),
+        )
 
         self.controls = [
             self.progress_ring,
             ft.Container(
                 content=ft.Column(
                     [
+                        self.paused_text,
                         self.countdown_text,
                         self.percentage_text,
                     ],
@@ -55,4 +66,9 @@ class TimerControl(ft.Stack):
         self.countdown_text.value = "00:00:00"
         self.progress_ring.value = 0
         self.percentage_text.value = "0%"
+        self.paused_text.visible = False
+        self.update()
+
+    def set_paused(self, paused: bool):
+        self.paused_text.visible = paused
         self.update()
