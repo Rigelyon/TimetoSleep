@@ -33,11 +33,11 @@ jobs:
 
       - name: Build with Flet
         run: |
-          flet pack main.py --name TimetoSleep --icon assets/icon.ico --add-data "assets;assets" --product-version ${{ steps.get_version.outputs.VERSION }}
+          flet pack main.py --name "TimetoSleep_${{ steps.get_version.outputs.VERSION }}" --icon assets/icon.ico --add-data "assets;assets" --product-version ${{ steps.get_version.outputs.VERSION }}
 
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: dist/TimetoSleep.exe
+          files: dist/TimetoSleep_${{ steps.get_version.outputs.VERSION }}.exe
           generate_release_notes: true
