@@ -60,3 +60,22 @@ def kill_processes(pids):
             print(f"Error killing process {pid}: {e}")
 
     return success_count > 0
+
+
+def shutdown_system():
+    os.system("shutdown /s /t 1")
+
+
+def restart_system():
+    os.system("shutdown /r /t 1")
+
+
+def lock_system():
+    import ctypes
+
+    ctypes.windll.user32.LockWorkStation()
+
+
+def sleep_system():
+    # Helper to enable hibernation if needed, but for sleep we specifically want suspend
+    os.system("rundll32.exe powrprof.dll,SetSuspendState 0,1,0")

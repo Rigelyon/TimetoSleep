@@ -33,10 +33,19 @@ class HomeView(ft.Column):
         self.process_selector = ProcessSelector(
             on_selection_change=self.on_process_selection_change
         )
-        self.timer_setup = TimerSetup()
+        self.timer_setup = TimerSetup(on_action_change=self.on_action_change)
 
         self.selected_process_text = ft.Text(
             "No process selected", italic=True, color="grey500"
+        )
+
+        self.action_description_text = ft.Text(
+            "System will shutdown when timer ends.",
+            size=16,
+            weight=ft.FontWeight.BOLD,
+            color="orange400",
+            visible=False,
+            text_align=ft.TextAlign.CENTER,
         )
 
         # Finish time info components
@@ -70,30 +79,10 @@ class HomeView(ft.Column):
             ]
         )
 
-        # Insert process selector into timer setup layout logically if needed,
-        # but here we just stack them in setup_container.
-        # Actually, the original design had configuration -> process selector -> timer settings.
-        # Let's adjust the setup_container to match that flow using the components.
-
-        # We need to split TimerSetup to allow inserting ProcessSelector in between?
-        # Or we can just rearrange. The TimerSetup currently has "Configuration" and "Timer Settings".
-        # Let's keep it simple: Configuration (Timer Type/Action) -> Process Selector -> Timer Settings (Inputs)
-
-        # To achieve the exact original layout, we might need to adjust TimerSetup or how we compose it.
-        # For now, let's put ProcessSelector in the middle of TimerSetup's controls list?
-        # No, that's messy. Let's just append ProcessSelector after TimerSetup for now,
-        # OR we can reconstruct the list.
-
-        # Let's reconstruct the setup container using parts of TimerSetup if possible,
-        # but TimerSetup is a Column.
-        # Let's just put ProcessSelector between the config and timer settings in TimerSetup?
-        # That would require modifying TimerSetup to accept a child or exposing its list.
-        # Let's modify TimerSetup to allow inserting the process selector.
-
-        # Actually, let's just add it to the TimerSetup controls list dynamically here since we are in Python.
-        self.timer_setup.controls.insert(2, ft.Divider())
+        self.divider = ft.Divider()
+        self.timer_setup.controls.insert(2, self.divider)
         self.timer_setup.controls.insert(3, self.process_selector)
-        self.timer_setup.controls.insert(4, ft.Divider())
+        self.timer_setup.controls.insert(4, self.action_description_text)
 
         self.setup_container = self.timer_setup  # Use TimerSetup as the main container
 
@@ -168,8 +157,32 @@ class HomeView(ft.Column):
             self.selected_process_text.color = "white"
         self.update()
 
+    def on_action_change(self, action):
+        is_terminate = action == "Terminate Process"
+        self.process_selector.visible = is_terminate
+        self.divider.visible = is_terminate  # Assuming I made it an instance attribute
+        self.action_description_text.visible = not is_terminate
+
+        if not is_terminate:
+            self.action_description_text.value = (
+                f"System will {action.lower()} when timer ends."
+            )
+            self.selected_process_text.value = f"Action: {action}"
+            self.selected_process_text.italic = False
+            self.selected_process_text.color = "white"
+
+        # Trigger update of process selector text if we switched back to terminate
+        if is_terminate:
+            self.on_process_selection_change(self.process_selector.selected_processes)
+
+        self.update()
+
     def start_timer(self, e):
-        if not self.process_selector.selected_processes:
+        action = self.timer_setup.action_dropdown.value
+        if (
+            action == "Terminate Process"
+            and not self.process_selector.selected_processes
+        ):
             app_state.page.open(
                 ft.SnackBar(content=ft.Text("Please select at least one process!"))
             )
@@ -277,6 +290,18 @@ class HomeView(ft.Column):
                         bgcolor="red700",
                     )
                 )
+        elif action == "Shutdown":
+            process_manager.shutdown_system()
+            app_state.page.open(ft.SnackBar(content=ft.Text("Shutting down...")))
+        elif action == "Restart":
+            process_manager.restart_system()
+            app_state.page.open(ft.SnackBar(content=ft.Text("Restarting...")))
+        elif action == "Lock":
+            process_manager.lock_system()
+            app_state.page.open(ft.SnackBar(content=ft.Text("Locking workstation...")))
+        elif action == "Sleep":
+            process_manager.sleep_system()
+            app_state.page.open(ft.SnackBar(content=ft.Text("Going to sleep...")))
 
     def cancel_timer(self, e):
         self.timer_running = False

@@ -4,8 +4,9 @@ from state import app_state
 
 
 class TimerSetup(ft.Column):
-    def __init__(self):
+    def __init__(self, on_action_change=None):
         super().__init__()
+        self.on_action_change = on_action_change
 
         # Timer Type Selector
         self.timer_type_dropdown = ft.Dropdown(
@@ -24,8 +25,13 @@ class TimerSetup(ft.Column):
             label="Action",
             options=[
                 ft.dropdown.Option("Terminate Process"),
+                ft.dropdown.Option("Shutdown"),
+                ft.dropdown.Option("Restart"),
+                ft.dropdown.Option("Lock"),
+                ft.dropdown.Option("Sleep"),
             ],
             value="Terminate Process",
+            on_change=self.on_action_change_handler,
             expand=True,
         )
 
@@ -134,7 +140,7 @@ class TimerSetup(ft.Column):
         )
 
         self.controls = [
-            ft.Text("Configuration:", weight=ft.FontWeight.BOLD),
+            ft.Text("Action Settings:", weight=ft.FontWeight.BOLD),
             ft.Row(
                 [
                     self.timer_type_dropdown,
@@ -145,8 +151,6 @@ class TimerSetup(ft.Column):
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
             ft.Divider(),
-            # Process selector will be inserted here by parent
-            # ft.Divider(), # Handled by parent
             ft.Text("Timer Settings:", weight=ft.FontWeight.BOLD),
             self.countdown_inputs,
             self.specific_time_inputs,
@@ -157,6 +161,10 @@ class TimerSetup(ft.Column):
         self.countdown_inputs.visible = is_countdown
         self.specific_time_inputs.visible = not is_countdown
         self.update()
+
+    def on_action_change_handler(self, e):
+        if self.on_action_change:
+            self.on_action_change(self.action_dropdown.value)
 
     def on_time_picked(self, e):
         self.selected_time = self.time_picker.value
