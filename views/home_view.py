@@ -23,14 +23,19 @@ class HomeView(ft.Column):
         self.header = ft.Text(
             "Time to Sleep", size=40, weight=ft.FontWeight.BOLD, color="blue400"
         )
-        self.sub_header = ft.Text("It's time for you to sleep", size=16, color="grey400")
+        self.sub_header = ft.Text(
+            "It's time for you to sleep", size=16, color="grey400"
+        )
 
         # Child Components
         self.timer_control = TimerControl()
         self.process_selector = ProcessSelector(
             on_selection_change=self.on_process_selection_change
         )
-        self.timer_setup = TimerSetup(on_action_change=self.on_action_change)
+        self.timer_setup = TimerSetup(
+            on_action_change=self.on_action_change,
+            on_trigger_change=self.on_trigger_change,
+        )
 
         self.selected_process_text = ft.Text(
             "No process selected", italic=True, color="grey500"
@@ -88,7 +93,7 @@ class HomeView(ft.Column):
 
         # Buttons
         self.start_button = ft.ElevatedButton(
-            "Start Timer",
+            "Start Trigger",
             icon="play_arrow",
             style=ft.ButtonStyle(
                 color="white",
@@ -141,6 +146,7 @@ class HomeView(ft.Column):
         # Initial refresh
         self.process_selector.refresh_processes()
         # Ensure initial state is consistent
+        self.current_trigger_type = self.timer_setup.trigger_type_dropdown.value
         self.on_action_change(self.timer_setup.action_dropdown.value)
 
     def on_process_selection_change(self, selected_processes):
@@ -167,9 +173,7 @@ class HomeView(ft.Column):
         self.action_description_container.visible = not is_terminate
 
         if not is_terminate:
-            self.action_description_text.value = (
-                f"System will {action.lower()} when timer ends."
-            )
+            self.update_description_text(action)
             self.selected_process_text.value = f"Action: {action}"
             self.selected_process_text.italic = False
             self.selected_process_text.color = "white"
@@ -179,6 +183,23 @@ class HomeView(ft.Column):
             self.on_process_selection_change(self.process_selector.selected_processes)
 
         self.update()
+
+    def on_trigger_change(self, trigger_type):
+        self.current_trigger_type = trigger_type
+        # Update description if currently showing action description
+        if self.action_description_text.visible:
+            current_action = self.timer_setup.action_dropdown.value
+            self.update_description_text(current_action)
+        self.update()
+
+    def update_description_text(self, action):
+        suffix_map = {
+            "Countdown": "when timer ends.",
+            "Specific Time": "at the specified time.",
+            "Immediate": "immediately.",
+        }
+        suffix = suffix_map.get(self.current_trigger_type, "when triggered.")
+        self.action_description_text.value = f"System will {action.lower()} {suffix}"
 
     def on_start_click(self, e):
         config = self.timer_setup.get_configuration()
@@ -205,6 +226,11 @@ class HomeView(ft.Column):
             app_state.page.open(
                 ft.SnackBar(content=ft.Text("Timer cannot exceed 999 hours!"))
             )
+            return
+
+        # Immediate Execution
+        if config["trigger_type"] == "Immediate":
+            self.on_timer_finish()
             return
 
         # Switch UI

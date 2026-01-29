@@ -3,20 +3,22 @@ from datetime import datetime, timedelta
 
 
 class TimerSetup(ft.Column):
-    def __init__(self, on_action_change=None):
+    def __init__(self, on_action_change=None, on_trigger_change=None):
         super().__init__()
         self.on_action_change = on_action_change
+        self.on_trigger_change = on_trigger_change
         self.horizontal_alignment = ft.CrossAxisAlignment.START
 
-        # Timer Type Selector
-        self.timer_type_dropdown = ft.Dropdown(
-            label="Timer Type",
+        # Trigger Type Selector
+        self.trigger_type_dropdown = ft.Dropdown(
+            label="Trigger",
             options=[
                 ft.dropdown.Option("Countdown"),
                 ft.dropdown.Option("Specific Time"),
+                ft.dropdown.Option("Immediate"),
             ],
             value="Countdown",
-            on_change=self.on_timer_type_change,
+            on_change=self.on_trigger_type_change,
             expand=True,
         )
 
@@ -139,20 +141,25 @@ class TimerSetup(ft.Column):
             visible=False,
         )
 
+        self.settings_divider = ft.Divider()
+        self.settings_header = ft.Text(
+            "Timer Settings:", weight=ft.FontWeight.BOLD, size=16
+        )
+
         self.controls = [
             ft.Text("Configuration:", weight=ft.FontWeight.BOLD, size=16),
             ft.Container(height=5),
             ft.Row(
                 [
-                    self.timer_type_dropdown,
+                    self.trigger_type_dropdown,
                     ft.Container(width=20),
                     self.action_dropdown,
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,
             ),
-            ft.Divider(),
-            ft.Text("Timer Settings:", weight=ft.FontWeight.BOLD, size=16),
+            self.settings_divider,
+            self.settings_header,
             ft.Container(height=5),
             self.countdown_inputs,
             self.specific_time_inputs,
@@ -162,10 +169,21 @@ class TimerSetup(ft.Column):
         if self.page:
             self.page.open(self.time_picker)
 
-    def on_timer_type_change(self, e):
-        is_countdown = self.timer_type_dropdown.value == "Countdown"
+    def on_trigger_type_change(self, e):
+        is_countdown = self.trigger_type_dropdown.value == "Countdown"
+        is_specific = self.trigger_type_dropdown.value == "Specific Time"
+        is_immediate = self.trigger_type_dropdown.value == "Immediate"
+
         self.countdown_inputs.visible = is_countdown
-        self.specific_time_inputs.visible = not is_countdown
+        self.specific_time_inputs.visible = is_specific
+
+        # Toggle settings header visibility
+        self.settings_divider.visible = not is_immediate
+        self.settings_header.visible = not is_immediate
+
+        if self.on_trigger_change:
+            self.on_trigger_change(self.trigger_type_dropdown.value)
+
         self.update()
 
     def on_action_change_handler(self, e):
@@ -194,14 +212,14 @@ class TimerSetup(ft.Column):
         """
         Returns a dict containing the current configuration.
         Returns:
-            dict: { 'mode': str, 'action': str, 'total_seconds': int, 'error': str|None }
+            dict: { 'trigger_type': str, 'action': str, 'total_seconds': int, 'error': str|None }
         """
-        mode = self.timer_type_dropdown.value
+        trigger_type = self.trigger_type_dropdown.value
         action = self.action_dropdown.value
         total_seconds = 0
         error = None
 
-        if mode == "Countdown":
+        if trigger_type == "Countdown":
             try:
                 h = int(self.hours_input.value) if self.hours_input.value else 0
                 m = int(self.minutes_input.value) if self.minutes_input.value else 0
@@ -211,7 +229,7 @@ class TimerSetup(ft.Column):
                     error = "Time must be greater than 0!"
             except ValueError:
                 error = "Invalid time input!"
-        else:  # Specific Time
+        elif trigger_type == "Specific Time":  # Specific Time
             if not self.selected_time:
                 error = "Please pick a time!"
             else:
@@ -223,8 +241,11 @@ class TimerSetup(ft.Column):
                 diff = target_time - now
                 total_seconds = int(diff.total_seconds())
 
+        elif trigger_type == "Immediate":
+            pass
+
         return {
-            "mode": mode,
+            "trigger_type": trigger_type,
             "action": action,
             "total_seconds": total_seconds,
             "error": error,

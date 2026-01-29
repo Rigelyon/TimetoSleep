@@ -55,6 +55,13 @@
 *   `views/`: Contains the UI components (`HomeView`, `SettingsView`).
 *   `assets/`: Stores application assets (icons).
 
+## Planned Features
+
+*   **System Tray**: Add support for minimizing the application to the system tray.
+*   **Gentle Notification**: Add support for gentle notifications when the timer is about to expire.
+*   **More Actions**: Schedules
+*   **More Triggers**: Do when CPU is idle, Do when battery is low, Do when Network is idle, Do when System is idle
+
 ## License
 
 MIT License
