@@ -11,7 +11,7 @@ class TimerSetup(ft.Column):
 
         # Trigger Type Selector
         self.trigger_type_dropdown = ft.Dropdown(
-            label="Trigger Type",
+            label="Trigger",
             options=[
                 ft.dropdown.Option("Countdown"),
                 ft.dropdown.Option("Specific Time"),

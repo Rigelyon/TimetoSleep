@@ -54,7 +54,9 @@ class TimerControl(ft.Stack):
             self.countdown_text.size = 40
 
         if total_seconds > 0:
-            self.progress_ring.value = remaining_seconds / total_seconds
+            self.progress_ring.value = (
+                total_seconds - remaining_seconds
+            ) / total_seconds
             self.percentage_text.value = f"{int(self.progress_ring.value * 100)}%"
         else:
             self.progress_ring.value = 0
